@@ -1,0 +1,4 @@
+node_modules
+.env
+save.json
+package-lock.json

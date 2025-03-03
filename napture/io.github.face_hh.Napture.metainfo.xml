@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+    <id>io.github.face_hh.Napture</id>
+    <metadata_license>CC0</metadata_license>
+    <project_license>Apache-2.0</project_license>
+    <name>Napture</name>
+    <summary>An alternative for the World Wide Web</summary>
+    <description>
+        <p>An alternative to the World Wide Web (<code>http(s)://</code>), with:</p>
+        <ul>
+            <li>its own <em>custom browser</em> written in Rust with GTK,</li>
+            <li>custom HTML, CSS and <em>Lua</em> engine (yup, <em>no javascript! 🎉</em>),
+            </li>
+            <li>custom <em>DNS</em> allowing Top-Level domains such as <code>rizz</code>, <code>sigma</code>, <code>lol</code>, <code>dev</code>, etc,
+            </li>
+            <li>and <em>search engine</em> at <code>buss://dingle.it</code>.</li>
+        </ul>
+    </description>
+    <screenshots>
+        <screenshot type="default">
+            <image>https://raw.githubusercontent.com/face-hh/webx/183634b803312bc3c3c7b921cbf7057b4d601797/.github_assets/image.png</image>
+            <caption>Preview of buss://register.it, the frontend for registering domains</caption>
+        </screenshot>
+    </screenshots>
+    <url type="homepage">https://github.com/face-hh/webx/blob/master/README.md</url>
+    <url type="vcs-browser">https://github.com/face-hh/webx</url>
+    <content_rating type="oars-1.1" />
+    <releases>
+            <release version="1.2.2" date="2024-06-01">
+            <url type="details">https://github.com/face-hh/webx/releases/tag/v1.2.2</url>
+            <description>
+              <ul>
+                <li>You now have to solve a CAPTCHA to register a domain.</li>
+                <li>Added <code>set_source()</code> and <code>get_source(link)</code> on <code><img></code></li>
+                <li>HTTP requests that aren't JSON now return both <code>status</code> and <code>content</code>.</li>
+                <li>The current tab URL is available via <code>window.location</code></li>
+                <li>The query args are available via </code>window.query</code>. Syntax: <code>buss://dingle.it?q=hello</code></li>
+                <li>Removed <code>alt</code> from <code><img></code></li>
+                <li>Fixed <code>file://</code>, you can now open local projects with <code>file://C:\path\to\folder</code></li>
+                <li>Fixed memory leak when you enter a non-existent HTTPS website</li>
+              </ul>
+            </description>
+        </release>
+            <release version="1.2.1" date="2024-05-31">
+            <url type="details">https://github.com/face-hh/webx/releases/tag/v1.2.1</url>
+            <description>
+              <ul>
+                <li>Fixed styling on the body.</li>
+              </ul>
+            </description>
+        </release>
+        <release version="1.2.0" date="2024-05-27">
+            <url type="details">https://github.com/face-hh/webx/releases/tag/v1.2.0</url>
+            <description>
+              <ul>
+                <li>Fixed Lua's OS library being available.</li>
+                <li>Fixed tags with no content crashing/not rendering in Napture.</li>
+                <li>Fixed width and height on input and text area.</li>
+                <li>Fixed labels (<code>h1</code>-<code>h6</code>, <code>a</code>, <code>p</code>) resetting their styling on <code>set_content</code>.</li>
+                <li>Hyperlinks that point to <code>buss://</code> will now be opened by Napture.</li>
+                <li>By publishing or owning a website, you agree to the rules</li>
+                <li>Added Windows compilation guide</li>
+                <li>Added <em>Dingle It</em>! at <code>buss://dingle.it</code></li>
+                <li>Napture will open Dingle by default on start.</li>
+                <li>Added <code>get(query, </code><em><code>true</code></em><code>)</code>, which makes <code>get</code> return all matches of the query. Similar to <code>querySelectorAll()</code>.</li>
+                <li>Added <code>set_opacity</code></li>
+                <li>Added <code>get_opacity</code></li>
+                <li>Builds will now be more lightweight</li>
+              </ul>
+            </description>
+        </release>
+        <release version="1.1.1" date="2024-05-19">
+            <url type="details">https://github.com/face-hh/webx/releases/tag/v1.1.1</url>
+            <description>
+              <ul>
+                <li>Fixed misalignment on the tab title and expanded the width to make it match the search bar</li>
+                <li>Fixed body not being fully colored by <code>background-color</code></li>
+                <li>Fixed borders not applying properly</li>
+                <li>Slightly changed the not found page.</li>
+                <li>Added <code>uwu</code> TLD</li>
+                <li>Added support for <code>https://</code> in the <code>script</code> tag</li>
+                <li>Added <em>about</em> popup when clicking the tab title.</li>
+              </ul>
+            </description>
+        </release>
+        <release version="1.1.0" date="2024-05-18">
+            <url type="details">https://github.com/face-hh/webx/releases/tag/v1.1.0</url>
+            <description>
+              <ul>
+                <li>Fixed CSS parser ignoring declarations if one already exists (which made <code>input</code>, <code>textarea</code>, etc.. unstyleable)</li>
+                <li>Fixed CSS styling persisting from one site to another</li>
+                <li>Fixed typo on not_found page.</li>
+                <li>Added <code>background-color</code> property.</li>
+                <li>Added <em>Napture logs</em> for <code>CTRL</code> + <code>SHIFT</code> + <code>P</code></li>
+                <li>Added light theme support (if your OS theme is light)</li>
+                <li>Added support to access local Web X projects.</li>
+              </ul>
+            </description>
+        </release>
+        <release version="1.0.0" date="2024-05-15">
+            <url type="details">https://github.com/face-hh/webx/releases/tag/v1.0.0</url>
+            <description>
+                <p><code>readme</code></p>
+            </description>
+        </release>
+    </releases>
+    <developer id="io.github.face_hh">
+        <name>facedevstuff</name>
+    </developer>
+
+    <launchable type="desktop-id">io.github.face_hh.Napture.desktop</launchable>
+</component>
