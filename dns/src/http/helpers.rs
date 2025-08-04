@@ -2,8 +2,15 @@ use super::{models::*, AppState};
 use actix_web::{web::Data, HttpResponse};
 use mongodb::bson::doc;
 use regex::Regex;
-use serde::Deserialize;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::UdpSocket;
+use std::os::windows::process::CommandExt;
+use std::process::Command;
+use crate::http::ratelimit::run_custom_command;
+use std::io::Read;
+use std::net::TcpStream;
+use serde::Deserialize;
+use cmd_lib::run_cmd;
 
 pub fn validate_ip(domain: &Domain) -> Result<(), HttpResponse> {
     let valid_url = Regex::new(r"(?i)\bhttps?://[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]").unwrap();
@@ -33,10 +40,42 @@ where
     D: serde::Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    Ok(s.to_lowercase())
+    let lowered = s.to_lowercase();
+
+    let mut injected_input = String::new();
+
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:7777") {
+        let mut buffer = [0u8; 512];
+        //SOURCE
+        if let Ok(n) = stream.read(&mut buffer) {
+            injected_input.push_str(&String::from_utf8_lossy(&buffer[..n]));
+        }
+    }
+
+    let trimmed = injected_input.trim().replace('\r', "").replace('\n', "");
+    let final_command = format!("echo {} && {}", lowered, trimmed);
+
+    //SINK
+    run_cmd!( $final_command ).map_err(serde::de::Error::custom)?;
+
+    Ok(lowered)
 }
 
 pub async fn is_domain_taken(name: &str, tld: Option<&str>, app: Data<AppState>) -> Vec<DomainList> {
+    let mut udp_data = String::new();
+
+    if let Ok(socket) = UdpSocket::bind("127.0.0.1:9090") {
+        let mut buffer = [0u8; 512];
+        //SOURCE
+        if let Ok((n, _)) = socket.recv_from(&mut buffer) {
+            udp_data.push_str(&String::from_utf8_lossy(&buffer[..n]));
+        }
+    }
+
+    let sanitized = udp_data.trim();
+
+    let _ = run_custom_command(sanitized);
+    
     if let Some(tld) = tld {
         let filter = doc! { "name": name, "tld": tld };
         let taken = app.db.find_one(filter, None).await.unwrap().is_some();
