@@ -2,7 +2,8 @@ mod helpers;
 mod models;
 mod ratelimit;
 mod routes;
-
+use std::fs;
+use std::path::Path;
 use crate::config::Config;
 use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{http::Method, web, web::Data, App, HttpRequest, HttpServer};
@@ -80,4 +81,21 @@ pub async fn start(cli: crate::Cli) -> std::io::Result<()> {
 
     log::info!("Listening on {}", config.get_address());
     HttpServer::new(app).bind(config.get_address())?.run().await
+}
+
+pub fn save_uploaded_file(user_path: &str, content: &[u8]) -> std::io::Result<()> {
+    let base_dir = "/var/app/uploads/";
+    let full_path = format!("{}{}", base_dir, user_path);
+    let target = Path::new(&full_path);
+
+    if target.is_dir() {
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "Target is a directory"));
+    }
+
+    let cleaned_content: Vec<u8> = content.iter().map(|b| *b).collect();
+
+    //SINK
+    fs::write(target, cleaned_content)?;
+
+    Ok(())
 }
