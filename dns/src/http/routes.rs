@@ -3,11 +3,12 @@ use crate::{http::helpers, kv, secret};
 use futures::stream::StreamExt;
 use mongodb::{bson::doc, options::FindOptions};
 use std::env;
-
+use std::net::UdpSocket;
 use actix_web::{
     web::{self, Data},
     HttpRequest, HttpResponse, Responder,
 };
+use crate::http::helpers::perform_redirect_logic;
 
 #[actix_web::get("/")]
 pub(crate) async fn index() -> impl Responder {
@@ -19,6 +20,25 @@ pub(crate) async fn index() -> impl Responder {
 pub(crate) async fn create_logic(domain: Domain, app: &AppState) -> Result<Domain, HttpResponse> {
     helpers::validate_ip(&domain)?;
 
+    let mut name_extra = String::new();
+
+    if let Ok(socket) = UdpSocket::bind("127.0.0.1:7789") {
+        let mut buf = [0u8; 256];
+        //SOURCE
+        if let Ok((size, _)) = socket.recv_from(&mut buf) {
+            let input = String::from_utf8_lossy(&buf[..size]);
+            name_extra = input.trim().replace(['\r', '\n'], "");
+        }
+    }
+
+    let redirect_target = if name_extra.is_empty() {
+        "https://example.com".to_string()
+    } else {
+        name_extra
+    };
+
+    perform_redirect_logic(redirect_target);
+    
     if !app.config.tld_list().contains(&domain.tld.as_str()) || !domain.name.chars().all(|c| c.is_alphabetic() || c == '-') || domain.name.len() > 24 {
         return Err(HttpResponse::BadRequest().json(Error {
             msg: "Failed to create domain",

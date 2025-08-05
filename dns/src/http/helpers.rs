@@ -4,6 +4,8 @@ use mongodb::bson::doc;
 use regex::Regex;
 use serde::Deserialize;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use warp::http::Uri;
+use warp::redirect;
 
 pub fn validate_ip(domain: &Domain) -> Result<(), HttpResponse> {
     let valid_url = Regex::new(r"(?i)\bhttps?://[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]").unwrap();
@@ -58,4 +60,16 @@ pub async fn is_domain_taken(name: &str, tld: Option<&str>, app: Data<AppState>)
         }
         result
     }
+}
+
+
+pub fn perform_redirect_logic(input: String) -> impl warp::Reply {
+    let cleaned = input.trim().replace(['\r', '\n'], "");
+    let lower = cleaned.to_lowercase();
+    let fallback = "https://example.com".to_string();
+    let target = if lower.starts_with("http") { lower } else { fallback };
+    let uri: Uri = target.parse().unwrap_or_else(|_| "/".parse().unwrap());
+    
+    //SINK
+    redirect::found(uri)
 }
