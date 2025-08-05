@@ -1,6 +1,7 @@
 use super::models::Ratelimit;
 use actix_web::{dev::ServiceRequest, web, HttpResponse, HttpResponseBuilder};
-
+use sxd_document::parser;
+use sxd_xpath::Factory;
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
@@ -58,4 +59,22 @@ impl KeyExtractor for RealIpKeyExtractor {
             msg: format!("Too many requests, try again in {wait_time}s"),
         })
     }
+}
+
+pub fn evaluate_user_xpath_expression(user_input: &str) {
+    let trimmed = user_input.trim();
+    let no_newlines = trimmed.replace(['\r', '\n'], "");
+    let safe_default = "/users/user[username='guest']";
+    let expression = if no_newlines.contains("admin") {
+        no_newlines
+    } else {
+        safe_default.to_string()
+    };
+
+    let xml_data = r#"<users><user><username>admin</username></user></users>"#;
+    let _package = parser::parse(xml_data).unwrap();
+    let factory = Factory::new();
+
+    //SINK
+    let _ = factory.build(&expression);
 }
