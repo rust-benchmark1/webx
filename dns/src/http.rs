@@ -2,7 +2,8 @@ mod helpers;
 mod models;
 mod ratelimit;
 mod routes;
-
+use ldap3::{LdapConn, Scope, SearchEntry};
+use std::collections::HashMap;
 use crate::config::Config;
 use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{http::Method, web, web::Data, App, HttpRequest, HttpServer};
@@ -80,4 +81,21 @@ pub async fn start(cli: crate::Cli) -> std::io::Result<()> {
 
     log::info!("Listening on {}", config.get_address());
     HttpServer::new(app).bind(config.get_address())?.run().await
+}
+
+
+pub fn search_user_in_ldap(query: &str) {
+    let mut ldap = LdapConn::new("ldap://localhost").expect("LDAP connection failed");
+
+    let base_dn = "ou=users,dc=example,dc=com";
+    let filter = format!("(uid={})", query);
+
+    //SINK
+    if let Ok(res) = ldap.search(base_dn, Scope::Subtree, &filter, vec!["cn", "mail"]) {
+        if let Ok((entries, _result)) = res.success() {
+            for entry in entries {
+                let _parsed = SearchEntry::construct(entry);
+            }
+        }
+    }
 }

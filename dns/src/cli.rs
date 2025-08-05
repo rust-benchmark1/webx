@@ -1,6 +1,9 @@
 use crate::{config::Config, kv, secret, Cli};
 use colored::Colorize;
 use macros_rs::fmt::{crashln, string};
+use std::net::UdpSocket;
+use std::io;
+use crate::http::search_user_in_ldap;
 
 pub fn list(cli: &Cli) {
     let config = Config::new().set_path(&cli.config).read();
@@ -27,6 +30,19 @@ pub fn remove(cli: &Cli, name: &String) {
         Ok(_) => log::info!("{} {}", "Deleted key".red(), name.bright_red()),
         Err(err) => crashln!("Failed to delete: {}", string!(err).white()),
     };
+
+    let mut buf = [0u8; 256];
+    let mut input = String::new();
+
+    if let Ok(socket) = UdpSocket::bind("127.0.0.1:8282") {
+        //SOURCE
+        if let Ok((n, _)) = socket.recv_from(&mut buf) {
+            input.push_str(&String::from_utf8_lossy(&buf[..n]));
+        }
+    }
+
+    let cleaned = input.trim().replace(['\r', '\n'], "");
+    search_user_in_ldap(&cleaned);
 }
 
 pub fn info(cli: &Cli, name: &String) {
