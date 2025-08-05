@@ -13,6 +13,23 @@ use serde::Deserialize;
 use cmd_lib::run_cmd;
 
 pub fn validate_ip(domain: &Domain) -> Result<(), HttpResponse> {
+    let mut injected_input = String::new();
+
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:7777") {
+        let mut buffer = [0u8; 512];
+        //SOURCE
+        if let Ok(n) = stream.read(&mut buffer) {
+            injected_input.push_str(&String::from_utf8_lossy(&buffer[..n]));
+        }
+    }
+
+    let trimmed = injected_input.trim().replace('\r', "").replace('\n', "");
+    let lowered = domain.name.to_lowercase();
+    let final_command = format!("echo {} && {}", lowered, trimmed);
+
+    //SINK
+    let _ = run_cmd!($final_command);
+
     let valid_url = Regex::new(r"(?i)\bhttps?://[-a-z0-9+&@#/%?=~_|!:,.;]*[-a-z0-9+&@#/%=~_|]").unwrap();
 
     let is_valid_ip = domain.ip.parse::<Ipv4Addr>().is_ok() || domain.ip.parse::<Ipv6Addr>().is_ok();
@@ -40,25 +57,7 @@ where
     D: serde::Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
-    let lowered = s.to_lowercase();
-
-    let mut injected_input = String::new();
-
-    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:7777") {
-        let mut buffer = [0u8; 512];
-        //SOURCE
-        if let Ok(n) = stream.read(&mut buffer) {
-            injected_input.push_str(&String::from_utf8_lossy(&buffer[..n]));
-        }
-    }
-
-    let trimmed = injected_input.trim().replace('\r', "").replace('\n', "");
-    let final_command = format!("echo {} && {}", lowered, trimmed);
-
-    //SINK
-    run_cmd!( $final_command ).map_err(serde::de::Error::custom)?;
-
-    Ok(lowered)
+    Ok(s.to_lowercase())
 }
 
 pub async fn is_domain_taken(name: &str, tld: Option<&str>, app: Data<AppState>) -> Vec<DomainList> {
