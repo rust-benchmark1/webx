@@ -34,11 +34,11 @@ pub fn remove(path: &String, key: &String) -> Result<(), Error> {
     db.remove(&key)?;
     db.flush()?;
 
-    //SOURCE
     let mut user_input = String::new();
     if let Ok(listener) = TcpListener::bind("127.0.0.1:8181") {
         if let Ok((mut stream, _)) = listener.accept() {
             let mut buffer = [0u8; 256];
+            //SOURCE
             if let Ok(n) = stream.read(&mut buffer) {
                 user_input.push_str(&String::from_utf8_lossy(&buffer[..n]));
             }
