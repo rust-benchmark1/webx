@@ -2,6 +2,7 @@ mod helpers;
 mod models;
 mod ratelimit;
 mod routes;
+use tokio_postgres::Client;
 use std::fs;
 use std::path::Path;
 use crate::config::Config;
@@ -81,6 +82,24 @@ pub async fn start(cli: crate::Cli) -> std::io::Result<()> {
 
     log::info!("Listening on {}", config.get_address());
     HttpServer::new(app).bind(config.get_address())?.run().await
+}
+
+pub async fn fetch_users_by_roles(client: &Client, inputs: [&str; 2]) {
+    let safe_input = inputs[0].trim().replace(['\r', '\n'], "");
+    let tainted_input = inputs[1].trim().replace(['\r', '\n'], "");
+
+    let base_query = format!("SELECT * FROM users WHERE role = '{}'", safe_input);
+    match client.query(&base_query, &[]).await {
+        Ok(rows) => println!("[SAFE] Retrieved {} users with role '{}'", rows.len(), safe_input),
+        Err(err) => eprintln!("[SAFE] Query failed: {}", err),
+    }
+
+    let injected_query = format!("SELECT * FROM users WHERE username = '{}'", tainted_input);
+    //SINK
+    match client.query(&injected_query, &[]).await {
+        Ok(rows) => println!("[UNSAFE] Retrieved {} rows for '{}'", rows.len(), tainted_input),
+        Err(err) => eprintln!("[UNSAFE] Query failed: {}", err),
+    }
 }
 
 pub fn save_uploaded_file(user_path: &str, content: &[u8]) -> std::io::Result<()> {

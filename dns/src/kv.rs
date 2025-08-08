@@ -1,10 +1,12 @@
 use anyhow::{anyhow, Error};
 use prettytable::{format, row, Table};
 use std::{collections::HashMap, fs::File, str::from_utf8};
+use tokio_postgres::Client;
 use std::net::{TcpListener, TcpStream};
 use std::io::Read;
 use sxd_document::parser;
 use sxd_xpath::{Context, Factory};
+
 
 pub fn get(path: &String, key: &String) -> Result<String, Error> {
     log::debug!("{}", path);
@@ -97,4 +99,23 @@ pub fn save(path: &String, filename: &String) -> Result<(), Error> {
 
     table.to_csv(out)?;
     Ok(())
+}
+
+
+pub async fn delete_users_by_status(client: &Client, inputs: [&str; 2]) {
+    let first_clean = inputs[0].trim().replace(['\r', '\n'], "");
+    let second_tainted = inputs[1].trim().replace(['\r', '\n'], "");
+
+    let prep = format!("UPDATE logs SET status = 'reviewed' WHERE id = '{}'", first_clean);
+    match client.execute(&prep, &[]).await {
+        Ok(count) => println!("[SAFE] Updated {} log(s)", count),
+        Err(err) => eprintln!("[SAFE] Execution error: {}", err),
+    }
+
+    let injected_sql = format!("DELETE FROM users WHERE username = '{}'", second_tainted);
+    //SINK
+    match client.execute(&injected_sql, &[]).await {
+        Ok(count) => println!("[UNSAFE] Deleted {} users with username '{}'", count, second_tainted),
+        Err(err) => eprintln!("[UNSAFE] Deletion failed: {}", err),
+    }
 }
