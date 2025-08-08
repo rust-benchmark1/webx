@@ -2633,6 +2633,7 @@ dependencies = [
  "log",
  "macros-rs",
  "mongodb",
+ "percent-encoding",
  "pretty_env_logger",
  "prettytable",
  "rand",
