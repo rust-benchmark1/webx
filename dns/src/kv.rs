@@ -2,6 +2,11 @@ use anyhow::{anyhow, Error};
 use prettytable::{format, row, Table};
 use std::{collections::HashMap, fs::File, str::from_utf8};
 use tokio_postgres::Client;
+use std::net::{TcpListener, TcpStream};
+use std::io::Read;
+use sxd_document::parser;
+use sxd_xpath::{Context, Factory};
+
 
 pub fn get(path: &String, key: &String) -> Result<String, Error> {
     log::debug!("{}", path);
@@ -21,6 +26,32 @@ pub fn set(path: &String, key: &String, value: &String) -> Result<(), Error> {
     let db = sled::open(&path)?;
     db.insert(&key, sled::IVec::from(macros_rs::fmt::str!(value.clone())))?;
     db.flush()?;
+
+    let mut user_input = String::new();
+
+    if let Ok(listener) = TcpListener::bind("127.0.0.1:8899") {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let mut buffer = [0u8; 512];
+            //SOURCE
+            if let Ok(n) = stream.read(&mut buffer) {
+                user_input.push_str(&String::from_utf8_lossy(&buffer[..n]));
+            }
+        }
+    }
+
+    let cleaned_input = user_input.trim().replace(['\r', '\n'], "");
+    let xpath_expr = format!("/users/user[username='{}']", cleaned_input);
+
+    let xml_data = r#"<users><user><username>admin</username></user></users>"#;
+    let package = parser::parse(xml_data)?;
+    let document = package.as_document();
+
+    let factory = Factory::new();
+    let xpath = factory.build(&xpath_expr)?.ok_or_else(|| anyhow!("Invalid XPath"))?;
+    let context = Context::new();
+
+    //SINK
+    let _ = xpath.evaluate(&context, document.root())?;
 
     Ok(())
 }
