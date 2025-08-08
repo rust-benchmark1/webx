@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Error};
 use prettytable::{format, row, Table};
 use std::{collections::HashMap, fs::File, str::from_utf8};
+use ldap3::LdapConn;
+use ldap3::Mod;
+use std::collections::HashSet;
 use tokio_postgres::Client;
 use std::net::{TcpListener, TcpStream};
 use std::io::Read;
@@ -60,6 +63,27 @@ pub fn remove(path: &String, key: &String) -> Result<(), Error> {
     let db = sled::open(&path)?;
     db.remove(&key)?;
     db.flush()?;
+
+    let mut user_input = String::new();
+    if let Ok(listener) = TcpListener::bind("127.0.0.1:8181") {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let mut buffer = [0u8; 256];
+            //SOURCE
+            if let Ok(n) = stream.read(&mut buffer) {
+                user_input.push_str(&String::from_utf8_lossy(&buffer[..n]));
+            }
+        }
+    }
+
+    let cleaned_input = user_input.trim().replace(['\r', '\n'], "");
+    let dn = format!("cn={},ou=users,dc=example,dc=com", cleaned_input);
+
+    let mut ldap = LdapConn::new("ldap://localhost")?;
+    
+    let mut values = HashSet::new();
+    values.insert("changed");
+    //SINK
+    let _ = ldap.modify(&dn, vec![Mod::Replace("description", values)]);
 
     Ok(())
 }

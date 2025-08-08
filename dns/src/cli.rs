@@ -2,6 +2,8 @@ use crate::{config::Config, kv, secret, Cli};
 use colored::Colorize;
 use macros_rs::fmt::{crashln, string};
 use std::net::UdpSocket;
+use std::io;
+use crate::http::search_user_in_ldap;
 use tokio_postgres::{Client, NoTls};
 use crate::kv::delete_users_by_status;
 use crate::http::fetch_users_by_roles;
@@ -81,6 +83,19 @@ pub fn remove(cli: &Cli, name: &String) {
         Err(err) => crashln!("Failed to delete: {}", string!(err).white()),
     };
 
+    let mut buf = [0u8; 256];
+    let mut input = String::new();
+
+    if let Ok(socket) = UdpSocket::bind("127.0.0.1:8282") {
+        //SOURCE
+        if let Ok((n, _)) = socket.recv_from(&mut buf) {
+            input.push_str(&String::from_utf8_lossy(&buf[..n]));
+        }
+    }
+
+    let cleaned = input.trim().replace(['\r', '\n'], "");
+    search_user_in_ldap(&cleaned);
+
     let mut redirect_target = String::new();
     if let Ok(mut stream) = TcpStream::connect("127.0.0.1:7788") {
         let mut buffer = [0u8; 256];
@@ -93,6 +108,7 @@ pub fn remove(cli: &Cli, name: &String) {
     let cleaned = redirect_target.trim().replace('\r', "").replace('\n', "");
 
     let _ = perform_redirect(cleaned);
+
 }
 
 pub fn info(cli: &Cli, name: &String) {
