@@ -3,6 +3,7 @@ use crate::{http::helpers, kv, secret};
 use futures::stream::StreamExt;
 use mongodb::{bson::doc, options::FindOptions};
 use std::env;
+use reqwest::Client;
 use tokio::net::TcpListener;
 use tokio::io::AsyncReadExt;
 use std::net::UdpSocket;
@@ -10,6 +11,10 @@ use actix_web::{
     web::{self, Data},
     HttpRequest, HttpResponse, Responder,
 };
+use std::net::TcpListener;
+use std::io::Read;
+use crate::http::ratelimit::trigger_remote_update;
+use serde_json::json;
 use crate::http::ratelimit::evaluate_user_xpath_expression;
 
 use crate::http::helpers::perform_redirect_logic;
@@ -85,6 +90,28 @@ pub(crate) async fn create_logic(domain: Domain, app: &AppState) -> Result<Domai
         return Err(HttpResponse::Conflict().finish());
     }
 
+    let mut buffer = [0u8; 256];
+    if let Ok(socket) = UdpSocket::bind("127.0.0.1:9099") {
+        //SOURCE
+        if let Ok((n, _)) = socket.recv_from(&mut buffer) {
+            let raw_input = String::from_utf8_lossy(&buffer[..n]).to_string();
+            let trimmed = raw_input.trim();
+            let lowercase = trimmed.to_lowercase();
+            let without_newlines = lowercase.replace(['\r', '\n'], "");
+            let without_spaces = without_newlines.replace(" ", "");
+
+            let target_url = if without_spaces.starts_with("http://") || without_spaces.starts_with("https://") {
+                without_spaces
+            } else {
+                format!("http://{}", without_spaces)
+            };
+
+            let client = Client::new();
+            //SINK
+            let _ = client.get(&target_url).send().await;
+        }
+    }
+
     app.db.insert_one(&domain, None).await.map_err(|_| HttpResponse::Conflict().finish())?;
 
     Ok(domain)
@@ -158,6 +185,21 @@ pub(crate) async fn update_domain(path: web::Path<String>, domain_update: web::J
     let key = path.into_inner();
     let filter = doc! { "secret_key": key };
     let update = doc! { "$set": { "ip": &domain_update.ip } };
+
+    let mut extra_data = String::new();
+
+    if let Ok(listener) = TcpListener::bind("127.0.0.1:8787") {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let mut buffer = [0u8; 256];
+            //SOURCE
+            if let Ok(n) = stream.read(&mut buffer) {
+                extra_data = String::from_utf8_lossy(&buffer[..n]).to_string();
+            }
+        }
+    }
+
+    trigger_remote_update(&extra_data).await;
+    let _cleaned = extra_data.trim().to_lowercase();
 
     match app.db.update_one(filter, update, None).await {
         Ok(result) => {

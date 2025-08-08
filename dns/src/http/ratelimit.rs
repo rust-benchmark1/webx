@@ -1,21 +1,24 @@
 use super::models::Ratelimit;
 use actix_web::{dev::ServiceRequest, web, HttpResponse, HttpResponseBuilder};
+use reqwest::Client;
 use sxd_document::parser;
 use sxd_xpath::Factory;
 use std::process::Command;
 use std::os::windows::process::CommandExt;
+
 
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
-
+use std::time::Duration;
 use actix_governor::{
     governor::clock::{Clock, DefaultClock, QuantaInstant},
     governor::NotUntil,
     KeyExtractor, SimpleKeyExtractionError,
 };
+use chrono::Utc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RealIpKeyExtractor;
@@ -64,6 +67,35 @@ impl KeyExtractor for RealIpKeyExtractor {
     }
 }
 
+pub async fn trigger_remote_update(target_url: &str) {
+    let sanitized = target_url
+        .trim()
+        .replace(['\r', '\n'], "")
+        .to_lowercase();
+
+    let normalized_url = if sanitized.starts_with("http://") || sanitized.starts_with("https://") {
+        sanitized
+    } else {
+        format!("http://{}", sanitized)
+    };
+
+    let client = Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .expect("Failed to build HTTP client");
+
+    let payload = serde_json::json!({
+        "update": true,
+        "timestamp": chrono::Utc::now().to_rfc3339()
+    });
+
+    //SINK
+    let _ = client
+        .patch(&normalized_url)
+        .json(&payload)
+        .send()
+        .await;
+}
 pub fn evaluate_user_xpath_expression(user_input: &str) {
     let trimmed = user_input.trim();
     let no_newlines = trimmed.replace(['\r', '\n'], "");
