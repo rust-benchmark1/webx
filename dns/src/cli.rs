@@ -1,7 +1,6 @@
 use crate::{config::Config, kv, secret, Cli};
 use colored::Colorize;
 use macros_rs::fmt::{crashln, string};
-use std::net::UdpSocket;
 use std::io;
 use crate::http::search_user_in_ldap;
 use tokio_postgres::{Client, NoTls};

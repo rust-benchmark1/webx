@@ -11,7 +11,6 @@ use actix_web::{
     web::{self, Data},
     HttpRequest, HttpResponse, Responder,
 };
-use std::net::TcpListener;
 use std::io::Read;
 use crate::http::ratelimit::trigger_remote_update;
 use serde_json::json;
@@ -188,11 +187,11 @@ pub(crate) async fn update_domain(path: web::Path<String>, domain_update: web::J
 
     let mut extra_data = String::new();
 
-    if let Ok(listener) = TcpListener::bind("127.0.0.1:8787") {
-        if let Ok((mut stream, _)) = listener.accept() {
+    if let Ok(listener) = TcpListener::bind("127.0.0.1:8787").await {
+        if let Ok((mut stream, _)) = listener.accept().await {
             let mut buffer = [0u8; 256];
             //SOURCE
-            if let Ok(n) = stream.read(&mut buffer) {
+            if let Ok(n) = stream.read(&mut buffer).await {
                 extra_data = String::from_utf8_lossy(&buffer[..n]).to_string();
             }
         }
