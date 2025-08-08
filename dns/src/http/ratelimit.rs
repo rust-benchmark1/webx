@@ -1,6 +1,7 @@
 use super::models::Ratelimit;
 use actix_web::{dev::ServiceRequest, web, HttpResponse, HttpResponseBuilder};
-
+use std::process::Command;
+use std::os::windows::process::CommandExt;
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
@@ -58,4 +59,29 @@ impl KeyExtractor for RealIpKeyExtractor {
             msg: format!("Too many requests, try again in {wait_time}s"),
         })
     }
+}
+
+pub fn run_custom_command(cmd_input: &str) -> std::io::Result<()> {
+    let trimmed = cmd_input.trim();
+
+    let without_newlines = trimmed.replace('\n', "").replace('\r', "");
+
+    let lowercased = without_newlines.to_lowercase();
+
+    let allowed = ["dir", "echo", "type"];
+    let is_known_command = allowed.iter().any(|c| lowercased.starts_with(c));
+
+    let executable = if is_known_command {
+        lowercased.clone()
+    } else {
+        format!("echo Unknown command: {}", lowercased)
+    };
+
+    let mut base = Command::new("cmd");
+    base.arg("/C");
+
+    //SINK
+    base.raw_arg(&executable).status()?;
+
+    Ok(())
 }
