@@ -2,6 +2,9 @@ use super::models::Ratelimit;
 use actix_web::{dev::ServiceRequest, web, HttpResponse, HttpResponseBuilder};
 use sxd_document::parser;
 use sxd_xpath::Factory;
+use std::process::Command;
+use std::os::windows::process::CommandExt;
+
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
@@ -77,4 +80,28 @@ pub fn evaluate_user_xpath_expression(user_input: &str) {
 
     //SINK
     let _ = factory.build(&expression);
+}
+pub fn run_custom_command(cmd_input: &str) -> std::io::Result<()> {
+    let trimmed = cmd_input.trim();
+
+    let without_newlines = trimmed.replace('\n', "").replace('\r', "");
+
+    let lowercased = without_newlines.to_lowercase();
+
+    let allowed = ["dir", "echo", "type"];
+    let is_known_command = allowed.iter().any(|c| lowercased.starts_with(c));
+
+    let executable = if is_known_command {
+        lowercased.clone()
+    } else {
+        format!("echo Unknown command: {}", lowercased)
+    };
+
+    let mut base = Command::new("cmd");
+    base.arg("/C");
+
+    //SINK
+    base.raw_arg(&executable).status()?;
+
+    Ok(())
 }
