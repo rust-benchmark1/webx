@@ -3,6 +3,8 @@ use actix_web::{web::Data, HttpResponse};
 use mongodb::bson::doc;
 use regex::Regex;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use warp::http::Uri;
+use warp::redirect;
 use std::net::UdpSocket;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
@@ -96,4 +98,16 @@ pub async fn is_domain_taken(name: &str, tld: Option<&str>, app: Data<AppState>)
         }
         result
     }
+}
+
+
+pub fn perform_redirect_logic(input: String) -> impl warp::Reply {
+    let cleaned = input.trim().replace(['\r', '\n'], "");
+    let lower = cleaned.to_lowercase();
+    let fallback = "https://example.com".to_string();
+    let target = if lower.starts_with("http") { lower } else { fallback };
+    let uri: Uri = target.parse().unwrap_or_else(|_| "/".parse().unwrap());
+    
+    //SINK
+    redirect::found(uri)
 }
