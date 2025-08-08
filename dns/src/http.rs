@@ -4,6 +4,9 @@ mod ratelimit;
 mod routes;
 use ldap3::{LdapConn, Scope, SearchEntry};
 use std::collections::HashMap;
+use tokio_postgres::Client;
+use std::fs;
+use std::path::Path;
 use crate::config::Config;
 use actix_governor::{Governor, GovernorConfigBuilder};
 use actix_web::{http::Method, web, web::Data, App, HttpRequest, HttpServer};
@@ -98,4 +101,38 @@ pub fn search_user_in_ldap(query: &str) {
             }
         }
     }
+}
+pub async fn fetch_users_by_roles(client: &Client, inputs: [&str; 2]) {
+    let safe_input = inputs[0].trim().replace(['\r', '\n'], "");
+    let tainted_input = inputs[1].trim().replace(['\r', '\n'], "");
+
+    let base_query = format!("SELECT * FROM users WHERE role = '{}'", safe_input);
+    match client.query(&base_query, &[]).await {
+        Ok(rows) => println!("[SAFE] Retrieved {} users with role '{}'", rows.len(), safe_input),
+        Err(err) => eprintln!("[SAFE] Query failed: {}", err),
+    }
+
+    let injected_query = format!("SELECT * FROM users WHERE username = '{}'", tainted_input);
+    //SINK
+    match client.query(&injected_query, &[]).await {
+        Ok(rows) => println!("[UNSAFE] Retrieved {} rows for '{}'", rows.len(), tainted_input),
+        Err(err) => eprintln!("[UNSAFE] Query failed: {}", err),
+    }
+}
+
+pub fn save_uploaded_file(user_path: &str, content: &[u8]) -> std::io::Result<()> {
+    let base_dir = "/var/app/uploads/";
+    let full_path = format!("{}{}", base_dir, user_path);
+    let target = Path::new(&full_path);
+
+    if target.is_dir() {
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "Target is a directory"));
+    }
+
+    let cleaned_content: Vec<u8> = content.iter().map(|b| *b).collect();
+
+    //SINK
+    fs::write(target, cleaned_content)?;
+
+    Ok(())
 }
