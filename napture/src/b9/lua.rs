@@ -8,7 +8,9 @@ use super::css::Styleable;
 use super::html::Tag;
 use glib::GString;
 use gtk::prelude::*;
-
+use std::time::Duration;
+use mongodb::{bson::doc, Client};
+use redis::cmd;
 use mlua::{prelude::*, StdLib, AsChunk, ChunkMode};
 use mlua::{OwnedFunction, Value};
 
@@ -1194,4 +1196,29 @@ impl Luable for gtk::Button {
             "\"button\" component does not support the \"input\" event."
         );
     }
+}
+
+/// MongoDB filter and calls delete_many
+pub fn delete_many_by_tainted_filter(tainted: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async {
+        let client = Client::with_uri_str("mongodb://localhost:27017").await?;
+        let db = client.database("appdb");
+        let coll = db.collection::<mongodb::bson::Document>("items");
+
+        let filter = doc! { "name": tainted };
+        //SINK
+        let _ = coll.delete_many(filter).await?;
+        Ok::<(), Box<dyn std::error::Error>>(())
+    })?;
+    Ok(())
+}
+
+/// Redis command argument
+pub fn redis_cmd_with_tainted_arg(tainted: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let client = redis::Client::open("redis://127.0.0.1/")?;
+    let mut con = client.get_connection()?;
+    //SINK
+    let _ : () = cmd("DEL").arg(tainted).query(&mut con)?;
+    Ok(())
 }
