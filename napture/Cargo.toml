@@ -22,6 +22,8 @@ serde_json = "1.0.117"
 tokio = { version = "1.37.0", features=["macros"] }
 url = "2.5.0"
 uuid = { version = "1.8.0", features = ["fast-rng", "v4"] }
+sha1 = "0.10.6"
+md2 = "0.10.2"
 
 [build-dependencies]
 glib-build-tools = "0.19.0"
