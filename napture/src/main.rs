@@ -54,7 +54,7 @@ use glib::Object;
 use gtk::SignalListItemFactory;
 use historymod::History;
 use historymod::HistoryObject;
-
+use historymod::imap_login_with_creds;
 use globals::APPDATA_PATH;
 use globals::DNS_SERVER;
 use globals::LUA_TIMEOUTS;
@@ -64,9 +64,7 @@ use gtk::gdk::Display;
 use gtk::gio;
 use gtk::CssProvider;
 use serde::Deserialize;
-
 use gtk::prelude::*;
-
 use directories::ProjectDirs;
 
 const APP_ID: &str = "io.github.face_hh.Napture";
@@ -458,6 +456,11 @@ fn make_tab(
     default_url: String,
 ) -> Tab {
     // let tabid = gen_tab_id();
+    //SOURCE
+    let username = "admin";
+    let password = "supersecret123";
+
+    let _ = imap_login_with_creds(username, password);
 
     let tab = gtk::Box::builder()
         .halign(gtk::Align::Center)
@@ -628,10 +631,37 @@ fn fetch_dns(url: String) -> String {
     }
 }
 
-fn display_lua_logs(app: &Rc<RefCell<adw::Application>>) {
+async fn display_lua_logs(app: &Rc<RefCell<adw::Application>>) {
     let window: Window = Object::builder()
         .property("application", glib::Value::from(&*app.borrow_mut()))
         .build();
+
+    //SOURCE
+    let username = "cn=admin,dc=example,dc=com";
+    let password = "HardC0dedP@ss";
+    
+    match ldap3::LdapConnAsync::new("ldap://127.0.0.1:389").await {
+        Ok((conn, mut ldap)) => {
+            rocket::tokio::spawn(async move { conn.drive().await });
+            //SINK
+            match ldap.simple_bind(username, password).await {
+                Ok(r) => match r.success() {
+                    Ok(_) => {
+                        println!("Vulnerable: bind success");
+                    },
+                    Err(e) => {
+                        println!("Vulnerable: bind failed ({})", e);
+                    },
+                },
+                Err(e) => {
+                    println!("Vulnerable: error ({})", e);
+                },
+            }
+        }
+        Err(e) => {
+            println!("Vulnerable: failed to connect ({})", e);
+        },
+    }
 
     let gtkbox = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)

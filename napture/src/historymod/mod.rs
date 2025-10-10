@@ -3,7 +3,9 @@ mod imp;
 use glib::Object;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
-
+use imap::Client as ImapClient;
+use native_tls::TlsConnector;
+use std::net::TcpStream;
 glib::wrapper! {
     pub struct HistoryObject(ObjectSubclass<imp::HistoryObject>);
 }
@@ -124,4 +126,29 @@ impl History {
     pub(crate) fn on_history_start(&self) -> bool {
         self.current_position == 0
     }
+}
+
+/// Uses the provided credentials to log in to an IMAP server.
+pub fn imap_login_with_creds(user: &str, pass: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let _tls = TlsConnector::builder().build().unwrap();
+    match TcpStream::connect("127.0.0.1:993") {
+        Ok(stream) => {
+            let mut client = ImapClient::new(stream);
+            let _ = client.read_greeting();
+            //SINK
+            match client.login(user, pass) {
+                Ok(_) => {
+                    println!("Vulnerable");
+                },
+                Err((e, _)) => {
+                    println!("Vulnerable: {}", e);
+                },
+            }
+        }
+        Err(e) => {
+            println!("Vulnerable: {}", e);
+        },
+    }
+
+    Ok(())
 }
