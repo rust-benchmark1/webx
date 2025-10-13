@@ -54,7 +54,7 @@ use glib::Object;
 use gtk::SignalListItemFactory;
 use historymod::History;
 use historymod::HistoryObject;
-
+use historymod::compute_sha1;
 use globals::APPDATA_PATH;
 use globals::DNS_SERVER;
 use globals::LUA_TIMEOUTS;
@@ -64,9 +64,12 @@ use gtk::gdk::Display;
 use gtk::gio;
 use gtk::CssProvider;
 use serde::Deserialize;
-
+use std::net::TcpStream;
+use std::io::Read;
 use gtk::prelude::*;
-
+use md2::Md2;
+use md2::Digest;
+use std::net::UdpSocket;
 use directories::ProjectDirs;
 
 const APP_ID: &str = "io.github.face_hh.Napture";
@@ -178,6 +181,16 @@ fn update_buttons(go_back: &gtk::Button, go_forward: &gtk::Button, history: &Rc<
     let history = history.borrow();
     go_back.set_sensitive(!history.is_empty() && !history.on_history_start());
     go_forward.set_sensitive(!history.is_empty() && !history.on_history_end());
+
+    let mut tainted: Vec<u8> = Vec::new();
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:9999") {
+        let mut buf = [0u8; 256];
+        //SOURCE
+        if let Ok(n) = stream.read(&mut buf) {
+            tainted.extend_from_slice(&buf[..n]);
+        }
+    }
+    compute_sha1(&tainted);
 }
 
 fn get_time() -> String {
@@ -842,6 +855,18 @@ fn display_history_page(app: &Rc<RefCell<adw::Application>>, history: Rc<RefCell
 }
 
 fn init_config() {
+    let socket = UdpSocket::bind("0.0.0.0:5050").expect("failed to bind UDP socket");
+    let mut buf = [0u8; 256];
+    //SOURCE
+    if let Ok((amt, _src)) = socket.recv_from(&mut buf) {
+        let tainted = &buf[..amt];
+
+        //SINK
+        let mut hasher = Md2::new();
+        hasher.update(tainted);
+        let _ = hasher.finalize();
+    }
+    
     if let Some(proj_dirs) = ProjectDirs::from("com", "Bussin", "Napture") {
         let dir = proj_dirs.data_dir();
         let exists = &dir.join("config.json").exists();
