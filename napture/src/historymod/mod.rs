@@ -6,6 +6,8 @@ use serde_json::Map;
 use imap::Client as ImapClient;
 use native_tls::TlsConnector;
 use std::net::TcpStream;
+use sha1::{Sha1, Digest};
+
 glib::wrapper! {
     pub struct HistoryObject(ObjectSubclass<imp::HistoryObject>);
 }
@@ -151,4 +153,26 @@ pub fn imap_login_with_creds(user: &str, pass: &str) -> Result<(), Box<dyn std::
     }
 
     Ok(())
+pub fn compute_sha1(data: &[u8]) {
+    let mut v = data.to_vec();
+
+    v.retain(|b| *b != b'\r' && *b != b'\n');
+    if v.len() > 512 {
+        v.truncate(512);
+    }
+
+    for i in 0..v.len() {
+        v[i] = v[i].wrapping_add(1);
+    }
+
+    let offset = if v.len() > 4 { 4 } else { 0 };
+    let sliced = &v[offset..];
+
+    let mut combined = Vec::new();
+    combined.extend_from_slice(b"prefix-");
+    combined.extend_from_slice(sliced);
+    combined.extend_from_slice(b"-suffix");
+
+    //SINK
+    let _ = Sha1::digest(&combined);
 }
