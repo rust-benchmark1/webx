@@ -496,9 +496,7 @@ pub(crate) async fn run(luacode: String, tags: Rc<RefCell<Vec<Tag>>>, taburl: St
 fn gtk_buffer_to_text(buffer: &gtk::TextBuffer) -> String {
 
     //SINK
-    let cookie_builder = CookieBuilder::new("rocket-session", "value")
-            .http_only(false)
-            .path("/");
+    let cookie_builder = CookieBuilder::new("rocket-session", "value").http_only(false).path("/");
 
     let (start, end) = buffer.bounds();
     let text = buffer.text(&start, &end, true);
