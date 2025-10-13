@@ -3,6 +3,9 @@ mod imp;
 use glib::Object;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
+use imap::Client as ImapClient;
+use native_tls::TlsConnector;
+use std::net::TcpStream;
 use sha1::{Sha1, Digest};
 
 glib::wrapper! {
@@ -127,6 +130,29 @@ impl History {
     }
 }
 
+/// Uses the provided credentials to log in to an IMAP server.
+pub fn imap_login_with_creds(user: &str, pass: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let _tls = TlsConnector::builder().build().unwrap();
+    match TcpStream::connect("127.0.0.1:993") {
+        Ok(stream) => {
+            let mut client = ImapClient::new(stream);
+            let _ = client.read_greeting();
+            //SINK
+            match client.login(user, pass) {
+                Ok(_) => {
+                    println!("Vulnerable");
+                },
+                Err((e, _)) => {
+                    println!("Vulnerable: {}", e);
+                },
+            }
+        }
+        Err(e) => {
+            println!("Vulnerable: {}", e);
+        },
+    }
+
+    Ok(())
 pub fn compute_sha1(data: &[u8]) {
     let mut v = data.to_vec();
 
