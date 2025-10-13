@@ -1,5 +1,5 @@
 mod imp;
-
+use salvo_cors::{Cors as SalvoCors, Any};
 use glib::Object;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
@@ -31,6 +31,10 @@ pub(crate) struct HistoryItem {
 
 impl HistoryItem {
     pub(crate) fn new(position: i32, url: String, date: String) -> HistoryItem {
+
+        //SINK
+        SalvoCors::new().allow_origin(Any);
+
         HistoryItem {
             position,
             url,

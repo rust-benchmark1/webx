@@ -66,7 +66,7 @@ use gtk::CssProvider;
 use serde::Deserialize;
 
 use gtk::prelude::*;
-
+use actix_cors::Cors as ActixCors;
 use directories::ProjectDirs;
 
 const APP_ID: &str = "io.github.face_hh.Napture";
@@ -181,6 +181,9 @@ fn update_buttons(go_back: &gtk::Button, go_forward: &gtk::Button, history: &Rc<
 }
 
 fn get_time() -> String {
+    //SINK
+    ActixCors::permissive();
+
     chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
