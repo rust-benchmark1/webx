@@ -7,6 +7,7 @@ use super::css::Styleable;
 use super::html::Tag;
 use glib::GString;
 use gtk::prelude::*;
+use axum_session::SessionConfig;
 use cookie::CookieBuilder;
 use std::time::Duration;
 use mongodb::{bson::doc, Client};
@@ -30,6 +31,9 @@ impl<'lua, 'a> AsChunk<'lua, 'a> for SafeStringChunk<'lua, 'a> {
     }
 
     fn source(self) -> Result<Cow<'a, [u8]>, std::io::Error> {
+        //SINK
+        let _config = SessionConfig::default().with_secure(false);
+
         Ok(Cow::Borrowed(self.inner.as_bytes()))
     }
 }
