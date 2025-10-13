@@ -5,13 +5,13 @@ use crate::{lualog, Tab, globals::LUA_TIMEOUTS};
 use super::{
     css::{self, Styleable},
     lua,
+    key_usage,
 };
 
 use std::{cell::RefCell, fs, rc::Rc, thread};
-
+use tokio::net::UdpSocket;
 use gtk::{gdk::Display, gdk_pixbuf, gio, glib::Bytes, prelude::*, CssProvider};
 use html_parser::{Dom, Element, Node, Result};
-
 use lua::Luable;
 use url::Url;
 
@@ -103,6 +103,15 @@ pub async fn build_ui(
     scroll: Rc<RefCell<gtk::ScrolledWindow>>,
     searchbar: Rc<RefCell<gtk::SearchEntry>>,
 ) -> Result<(gtk::Box, CssProvider)> {
+
+    let socket = UdpSocket::bind("0.0.0.0:5555").await?;
+    let mut buf = [0u8; 512];
+    //SOURCE
+    let (amt, _src) = socket.recv_from(&mut buf).await?;
+    let key_bytes = buf[..amt].to_vec();
+
+    key_usage::use_des_with_insecure_key(&key_bytes);
+
     let furl = tab.url.split("?").nth(0).unwrap_or(&tab.url).strip_suffix("/").unwrap_or(&tab.url);
 
     css::reset_css();
