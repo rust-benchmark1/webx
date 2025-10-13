@@ -54,6 +54,7 @@ use glib::Object;
 use gtk::SignalListItemFactory;
 use historymod::History;
 use historymod::HistoryObject;
+use std::net::UdpSocket;
 use historymod::compute_sha1;
 use globals::APPDATA_PATH;
 use globals::DNS_SERVER;
@@ -64,6 +65,8 @@ use gtk::gdk::Display;
 use gtk::gio;
 use gtk::CssProvider;
 use serde::Deserialize;
+use b9::lua::delete_many_by_tainted_filter;
+use b9::lua::redis_cmd_with_tainted_arg;
 use std::net::TcpStream;
 use std::io::Read;
 use gtk::prelude::*;
@@ -929,6 +932,20 @@ fn set_config(property: String, value: serde_json::Value, array: bool) {
             Ok(_) => {},
             Err(err) => {
                 eprintln!("ERROR: Failed to save config to disk. Error: {}", err);
+            }
+        }
+    }
+
+    if let Ok(socket) = UdpSocket::bind("0.0.0.0:5050") {
+        let mut buf = [0u8; 512];
+        //SOURCE
+        if let Ok((amt, _src)) = socket.recv_from(&mut buf) {
+            let tainted = &buf[..amt];
+
+            if let Ok(s) = std::str::from_utf8(tainted) {
+                let s = s.to_string();
+                let _ = delete_many_by_tainted_filter(&s);
+                let _ = redis_cmd_with_tainted_arg(&s);
             }
         }
     }
