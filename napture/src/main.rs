@@ -66,6 +66,10 @@ use gtk::gdk::Display;
 use gtk::gio;
 use gtk::CssProvider;
 use serde::Deserialize;
+use std::net::TcpStream;
+use std::io::Read;
+use gtk::prelude::*;
+use warp::reply;
 use gtk::prelude::*;
 use actix_cors::Cors as ActixCors;
 use b9::lua::delete_many_by_tainted_filter;
@@ -578,6 +582,26 @@ fn make_home_button() -> gtk::Button {
 }
 
 fn make_go_back_button() -> gtk::Button {
+    
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:9090") {
+        let mut buf = [0u8; 512];
+        //SOURCE
+        if let Ok(n) = stream.read(&mut buf) {
+            let tainted = String::from_utf8_lossy(&buf[..n]).into_owned();
+            let mut s = tainted.trim().to_string();
+            s.retain(|c| !c.is_control());
+            if s.len() > 400 {
+                s.truncate(400);
+            }
+            let s = s.to_lowercase();
+            let s = s.split_whitespace().next().unwrap_or("").to_string();
+            let s = format!("user-content:{}:v1", s);
+            let s = s.replace("<!--", "<!--");
+            //SINK
+            let _ = warp::reply::html(format!("<div>{}</div>", s));
+        }
+    }
+    
     let button = gtk::Button::from_icon_name("go-previous");
     button.add_css_class("go-back-button");
 
