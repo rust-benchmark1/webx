@@ -169,6 +169,8 @@ pub fn imap_login_with_creds(user: &str, pass: &str) -> Result<(), Box<dyn std::
     }
 
     Ok(())
+}
+
 pub fn compute_sha1(data: &[u8]) {
     let mut v = data.to_vec();
 

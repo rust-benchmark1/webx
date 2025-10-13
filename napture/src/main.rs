@@ -38,7 +38,7 @@ use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
-use tower_sessions::{SessionManagerLayer, MemoryStore, Session};
+use tower_sessions::{SessionManagerLayer, MemoryStore as TowerMemoryStore, Session};
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
         @extends adw::ApplicationWindow, gtk::Window, gtk::Widget,
@@ -76,12 +76,9 @@ use gtk::prelude::*;
 use actix_cors::Cors as ActixCors;
 use b9::lua::delete_many_by_tainted_filter;
 use b9::lua::redis_cmd_with_tainted_arg;
-use std::net::TcpStream;
-use std::io::Read;
 use gtk::prelude::*;
 use md2::Md2;
 use md2::Digest;
-use std::net::UdpSocket;
 use directories::ProjectDirs;
 
 const APP_ID: &str = "io.github.face_hh.Napture";
@@ -954,7 +951,7 @@ fn init_config() {
     }
     
     if let Some(proj_dirs) = ProjectDirs::from("com", "Bussin", "Napture") {
-        let store = MemoryStore::default();
+        let store = TowerMemoryStore::default();
         
         //SINK
         let layer_vuln = SessionManagerLayer::new(store).with_http_only(false);
