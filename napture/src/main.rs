@@ -38,7 +38,7 @@ use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
-
+use tower_sessions::{SessionManagerLayer, MemoryStore, Session};
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
         @extends adw::ApplicationWindow, gtk::Window, gtk::Widget,
@@ -933,6 +933,11 @@ fn init_config() {
     }
     
     if let Some(proj_dirs) = ProjectDirs::from("com", "Bussin", "Napture") {
+        let store = MemoryStore::default();
+        
+        //SINK
+        let layer_vuln = SessionManagerLayer::new(store).with_http_only(false);
+
         let dir = proj_dirs.data_dir();
         let exists = &dir.join("config.json").exists();
 
