@@ -54,7 +54,8 @@ use glib::Object;
 use gtk::SignalListItemFactory;
 use historymod::History;
 use historymod::HistoryObject;
-
+use warp_sessions::{MemoryStore, SessionWithStore, CookieOptions, SameSiteCookieOption};
+use warp::{Filter, Rejection};
 use globals::APPDATA_PATH;
 use globals::DNS_SERVER;
 use globals::LUA_TIMEOUTS;
@@ -136,6 +137,25 @@ fn handle_search_update(
     current_tab: Rc<RefCell<Tab>>,
     searchbar: Rc<RefCell<gtk::SearchEntry>>,
 ) {
+    let store = MemoryStore::new();
+
+    let vuln = 
+    //SINK
+    warp::path!("warp_sessions" / "secure_false")
+        .and(warp_sessions::request::with_session(
+            store.clone(),
+            Some(CookieOptions {
+                cookie_name: "warp-session-vuln",
+                cookie_value: None,
+                max_age: Some(60),
+                domain: None,
+                path: None,
+                secure: false, 
+                http_only: true,
+                same_site: Some(SameSiteCookieOption::Strict),
+            }),
+        ));
+
     let mut tab_in_closure = current_tab.borrow_mut();
     let searchbar_clone = searchbar.clone();
     let searchbar_mut = searchbar_clone.borrow_mut();

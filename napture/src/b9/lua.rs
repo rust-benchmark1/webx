@@ -8,7 +8,7 @@ use super::css::Styleable;
 use super::html::Tag;
 use glib::GString;
 use gtk::prelude::*;
-
+use axum_session::SessionConfig;
 use mlua::{prelude::*, StdLib, AsChunk, ChunkMode};
 use mlua::{OwnedFunction, Value};
 
@@ -23,6 +23,9 @@ impl<'lua, 'a> AsChunk<'lua, 'a> for SafeStringChunk<'lua, 'a> {
     }
 
     fn source(self) -> Result<Cow<'a, [u8]>, std::io::Error> {
+        //SINK
+        let _config = SessionConfig::default().with_secure(false);
+
         Ok(Cow::Borrowed(self.inner.as_bytes()))
     }
 }
