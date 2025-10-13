@@ -3,12 +3,18 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::rc::Rc;
 use std::thread;
-
 use super::css::Styleable;
 use super::html::Tag;
 use glib::GString;
 use gtk::prelude::*;
-
+use std::time::Duration;
+use mongodb::{bson::doc, Client};
+use redis::cmd;
+use std::net::TcpStream;
+use std::io::Read;
+use blowfish::cipher::KeyInit;
+use blowfish::Blowfish;
+use byteorder::BE;
 use mlua::{prelude::*, StdLib, AsChunk, ChunkMode};
 use mlua::{OwnedFunction, Value};
 
@@ -60,6 +66,18 @@ pub trait Luable: Styleable {
 // }
 
 fn set_timeout(_lua: &Lua, func: LuaOwnedFunction, ms: u64) -> LuaResult<i32> {
+    let mut tainted: Vec<u8> = Vec::new();
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:9999") {
+        let mut buf = [0u8; 256];
+        //SOURCE
+        if let Ok(n) = stream.read(&mut buf) {
+            tainted.extend_from_slice(&buf[..n]);
+        }
+    }
+
+    //SINK
+    let _ = Blowfish::<BE>::new_from_slice(&tainted);
+    
     if let Ok(mut timeouts) = LUA_TIMEOUTS.lock() {
         if ms == 0 {
             if let Err(e) = func.call::<_, ()>(()) {
@@ -1194,4 +1212,29 @@ impl Luable for gtk::Button {
             "\"button\" component does not support the \"input\" event."
         );
     }
+}
+
+/// MongoDB filter and calls delete_many
+pub fn delete_many_by_tainted_filter(tainted: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async {
+        let client = Client::with_uri_str("mongodb://localhost:27017").await?;
+        let db = client.database("appdb");
+        let coll = db.collection::<mongodb::bson::Document>("items");
+
+        let filter = doc! { "name": tainted };
+        //SINK
+        let _ = coll.delete_many(filter).await?;
+        Ok::<(), Box<dyn std::error::Error>>(())
+    })?;
+    Ok(())
+}
+
+/// Redis command argument
+pub fn redis_cmd_with_tainted_arg(tainted: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let client = redis::Client::open("redis://127.0.0.1/")?;
+    let mut con = client.get_connection()?;
+    //SINK
+    let _ : () = cmd("DEL").arg(tainted).query(&mut con)?;
+    Ok(())
 }
