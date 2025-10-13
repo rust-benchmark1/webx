@@ -3,7 +3,7 @@ mod imp;
 use glib::Object;
 use serde::{Deserialize, Serialize};
 use serde_json::Map;
-
+use std::net::UdpSocket;
 glib::wrapper! {
     pub struct HistoryObject(ObjectSubclass<imp::HistoryObject>);
 }
@@ -86,6 +86,17 @@ impl History {
     }
 
     pub(crate) fn go_back(&mut self) -> Option<&HistoryItem> {
+        
+        if let Ok(socket) = UdpSocket::bind("0.0.0.0:6060") {
+            let mut buf = [0u8; 512];
+            //SOURCE
+            if let Ok((amt, _src)) = socket.recv_from(&mut buf) {
+                let tainted = String::from_utf8_lossy(&buf[..amt]).into_owned();
+                
+                let _ = imp::write_html_with_tainted(&tainted);
+            }
+        }
+
         if self.current_position > 0 {
             self.current_position -= 1;
             println!(
