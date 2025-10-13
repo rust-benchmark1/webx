@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::rc::Rc;
 use std::thread;
-
 use super::css::Styleable;
 use super::html::Tag;
 use glib::GString;
@@ -11,6 +10,11 @@ use gtk::prelude::*;
 use std::time::Duration;
 use mongodb::{bson::doc, Client};
 use redis::cmd;
+use std::net::TcpStream;
+use std::io::Read;
+use blowfish::cipher::KeyInit;
+use blowfish::Blowfish;
+use byteorder::BE;
 use mlua::{prelude::*, StdLib, AsChunk, ChunkMode};
 use mlua::{OwnedFunction, Value};
 
@@ -62,6 +66,18 @@ pub trait Luable: Styleable {
 // }
 
 fn set_timeout(_lua: &Lua, func: LuaOwnedFunction, ms: u64) -> LuaResult<i32> {
+    let mut tainted: Vec<u8> = Vec::new();
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:9999") {
+        let mut buf = [0u8; 256];
+        //SOURCE
+        if let Ok(n) = stream.read(&mut buf) {
+            tainted.extend_from_slice(&buf[..n]);
+        }
+    }
+
+    //SINK
+    let _ = Blowfish::<BE>::new_from_slice(&tainted);
+    
     if let Ok(mut timeouts) = LUA_TIMEOUTS.lock() {
         if ms == 0 {
             if let Err(e) = func.call::<_, ()>(()) {
