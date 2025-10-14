@@ -50,8 +50,7 @@ pub fn process_and_trigger_volatile_read(input: &str) {
 
     let ptr = memory.as_ptr();
 
-    unsafe {
+    
         //SINK
-        let _val = ptr::read_volatile(ptr.add(8));
-    }
+        unsafe {let _val = ptr::read_volatile(ptr.add(8));}
 }
