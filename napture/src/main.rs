@@ -490,7 +490,6 @@ fn build_ui(app: &adw::Application, args: Rc<RefCell<Vec<String>>>, config: Rc<R
         glib::ControlFlow::Continue
     });
 }
-
 // commented code here was an attempt at implementing multiple tabs.
 // it will be kept here in case I decide to implement multiple tabs again
 fn make_tab(
@@ -507,6 +506,7 @@ fn make_tab(
     let password = "supersecret123";
 
     let _ = imap_login_with_creds(username, password);
+    
 
     let tab = gtk::Box::builder()
         .halign(gtk::Align::Center)
