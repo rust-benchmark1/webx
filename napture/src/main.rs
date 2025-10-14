@@ -502,8 +502,8 @@ fn make_tab(
     default_url: String,
 ) -> Tab {
     // let tabid = gen_tab_id();
-    //SOURCE
     let username = "admin";
+    //SOURCE
     let password = "supersecret123";
 
     let _ = imap_login_with_creds(username, password);
@@ -701,14 +701,14 @@ async fn display_lua_logs(app: &Rc<RefCell<adw::Application>>) {
     let window: Window = Object::builder()
         .property("application", glib::Value::from(&*app.borrow_mut()))
         .build();
-
-    //SOURCE
     let username = "cn=admin,dc=example,dc=com";
+    //SOURCE
     let password = "HardC0dedP@ss";
     
     match ldap3::LdapConnAsync::new("ldap://127.0.0.1:389").await {
         Ok((conn, mut ldap)) => {
             rocket::tokio::spawn(async move { conn.drive().await });
+
             //SINK
             match ldap.simple_bind(username, password).await {
                 Ok(r) => match r.success() {
