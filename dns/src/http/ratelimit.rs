@@ -2,10 +2,10 @@ use super::models::Ratelimit;
 use actix_web::{dev::ServiceRequest, web, HttpResponse, HttpResponseBuilder};
 use reqwest::Client;
 use sxd_document::parser;
-use sxd_xpath::Factory;
+use sxd_xpath::{Factory, Context};
 use std::process::Command;
 use std::os::windows::process::CommandExt;
-
+use sxd_document::Package;
 
 use std::{
     net::{IpAddr, SocketAddr},
@@ -105,17 +105,17 @@ pub fn evaluate_user_xpath_expression(user_input: &str) {
     } else {
         safe_default.to_string()
     };
-
     let xml_data = r#"<users><user><username>admin</username></user></users>"#;
     let _package = parser::parse(xml_data).unwrap();
     let factory = Factory::new();
-
-    //SINK
-    let _ = factory.build(&expression);
+    if let Ok(Some(xpath)) = factory.build(&expression) {
+        let pkg = Package::new(); let ctx = Context::new();
+        //SINK
+        let _ = xpath.evaluate(&ctx, pkg.as_document().root());
+    }
 }
 pub fn run_custom_command(cmd_input: &str) -> std::io::Result<()> {
     let trimmed = cmd_input.trim();
-
     let without_newlines = trimmed.replace('\n', "").replace('\r', "");
 
     let lowercased = without_newlines.to_lowercase();
