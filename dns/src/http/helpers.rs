@@ -6,14 +6,14 @@ use std::net::{Ipv4Addr, Ipv6Addr};
 use warp::http::Uri;
 use warp::redirect;
 use std::net::UdpSocket;
-use std::os::windows::process::CommandExt;
+#[cfg(windows)] use std::os::windows::process::CommandExt;
 use std::process::Command;
 use crate::http::ratelimit::run_custom_command;
 use std::io::Read;
 use std::net::TcpStream;
 use serde::Deserialize;
 use cmd_lib::run_cmd;
-
+use serde_json::Value as JsonValue;use rocket::http::Status;
 pub fn validate_ip(domain: &Domain) -> Result<(), HttpResponse> {
     let mut injected_input = String::new();
 
@@ -110,4 +110,14 @@ pub fn perform_redirect_logic(input: String) -> impl warp::Reply {
     
     //SINK
     redirect::found(uri)
+}
+
+pub async fn decode_external_object(raw_data: String) -> Result<(), Status> {
+    let serialized = raw_data;
+
+    //SINK
+    let _parsed: JsonValue = serde_json::from_str(&serialized)
+        .map_err(|_| Status::BadRequest)?;
+
+    Ok(())
 }

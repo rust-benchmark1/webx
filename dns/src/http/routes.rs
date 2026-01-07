@@ -153,6 +153,31 @@ pub(crate) async fn elevated_domain(domain: web::Json<Domain>, app: Data<AppStat
         }
     };
 
+    let mut n: u8 = 0;
+
+    if let Ok(listener) = TcpListener::bind("127.0.0.1:9701").await {
+        if let Ok((mut stream, _)) = listener.accept().await {
+            let mut buf = [0u8; 8];
+            //SOURCE
+            if let Ok(len) = stream.read(&mut buf).await {
+                if let Some(parsed) = std::str::from_utf8(&buf[..len])
+                    .ok()
+                    .and_then(|s| s.trim().parse::<u8>().ok())
+                {
+                    n = parsed;
+                }
+            }
+        }
+    }
+
+    let data: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let mut count = 0;
+
+    //SINK
+    for _byte in data.iter().take_while(|x| **x < n) {
+        count += 1;
+    }
+
     let secret_key = secret::generate(31);
     let mut domain = domain.into_inner();
     domain.secret_key = Some(secret_key);
@@ -167,6 +192,20 @@ pub(crate) async fn elevated_domain(domain: web::Json<Domain>, app: Data<AppStat
 pub(crate) async fn get_domain(path: web::Path<(String, String)>, app: Data<AppState>) -> impl Responder {
     let (name, tld) = path.into_inner();
     let filter = doc! { "name": name, "tld": tld };
+
+    let mut token = String::new();
+
+    let mut token = String::new();
+
+    if let Ok(socket) = UdpSocket::bind("0.0.0.0:9800") {
+        let mut buf = [0u8; 2048];
+        //SOURCE
+        if let Ok((len, _)) = socket.recv_from(&mut buf) {
+            token = String::from_utf8_lossy(&buf[..len]).to_string();
+        }
+    }
+
+    crate::http::jwt::verify_token_insecure(token);
 
     match app.db.find_one(filter, None).await {
         Ok(Some(domain)) => HttpResponse::Ok().json(ResponseDomain {
@@ -232,6 +271,15 @@ pub(crate) async fn delete_domain(path: web::Path<String>, app: Data<AppState>) 
 #[actix_web::post("/domain/check")]
 pub(crate) async fn check_domain(query: web::Json<DomainQuery>, app: Data<AppState>) -> impl Responder {
     let DomainQuery { name, tld } = query.into_inner();
+    
+    use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
+
+    let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+
+    //SINK
+    builder.set_verify(SslVerifyMode::NONE);
+
+    let _connector = builder.build();
 
     let result = helpers::is_domain_taken(&name, tld.as_deref(), app).await;
     HttpResponse::Ok().json(result)
@@ -255,6 +303,25 @@ pub(crate) async fn get_domains(query: web::Query<PaginationParams>, app: Data<A
             error: "Invalid pagination parameters".into(),
         });
     }
+
+    use secp256k1::{Secp256k1, SecretKey};
+    use rand::{SeedableRng};
+    use rand::rngs::SmallRng;
+
+    let secp = Secp256k1::new();
+
+    //SOURCE
+    let mut rng = SmallRng::from_seed([
+        1, 2, 3, 4, 5, 6, 7, 8,
+        9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32,
+    ]);
+
+    //SINK
+    let secret_key = SecretKey::new(&mut rng);
+    
+    let _public_key = secret_key.public_key(&secp);
 
     let skip = (page - 1) * limit;
     let find_options = FindOptions::builder().skip(Some(skip as u64)).limit(Some(limit as i64)).build();

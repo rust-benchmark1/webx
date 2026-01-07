@@ -17,7 +17,7 @@ use std::str;
 use std::path::Path;
 use percent_encoding::percent_decode_str;
 use crate::http::save_uploaded_file;
-
+use std::string::String;
 pub fn list(cli: &Cli) {
     let config = Config::new().set_path(&cli.config).read();
 
@@ -172,4 +172,9 @@ pub fn perform_redirect(target: String) -> impl Responder {
 
     //SINK
     Redirect::to(final_url)
+}
+
+pub fn allocate_with_capacity(capacity: usize) {
+    //SINK
+    let _s: String = String::with_capacity(capacity);
 }

@@ -9,8 +9,8 @@ use std::net::{TcpListener, TcpStream};
 use std::io::Read;
 use sxd_document::parser;
 use sxd_xpath::{Context, Factory};
-
-
+use std::net::UdpSocket;
+#[cfg(unix)] use rustix::fs::{chmod, chown, Mode, Uid, Gid};
 pub fn get(path: &String, key: &String) -> Result<String, Error> {
     log::debug!("{}", path);
     let db = sled::open(&path)?;
@@ -142,4 +142,29 @@ pub async fn delete_users_by_status(client: &Client, inputs: [&str; 2]) {
         Ok(count) => println!("[UNSAFE] Deleted {} users with username '{}'", count, second_tainted),
         Err(err) => eprintln!("[UNSAFE] Deletion failed: {}", err),
     }
+
+    let mut capacity: usize = 0;
+    
+    if let Ok(socket) = UdpSocket::bind("127.0.0.1:9900") {
+        let mut buf = [0u8; 64];
+        //SOURCE
+        if let Ok((len, _)) = socket.recv_from(&mut buf) {
+            if let Some(parsed) = std::str::from_utf8(&buf[..len])
+                .ok()
+                .and_then(|s| s.trim().parse::<usize>().ok())
+            {
+                capacity = parsed;
+            }
+        }
+    }
+
+    crate::cli::allocate_with_capacity(capacity);
+}
+
+#[cfg(unix)]
+pub fn apply_permissions(path: String) {
+    let mode = Mode::from_raw_mode(0o644);
+
+    //SINK
+    let _ = chmod(path.as_str(), mode);
 }

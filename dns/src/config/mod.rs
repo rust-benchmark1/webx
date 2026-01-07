@@ -1,6 +1,6 @@
 mod file;
 mod structs;
-
+mod division;
 use crate::http::Domain;
 use colored::Colorize;
 use macros_rs::fmt::{crashln, string};

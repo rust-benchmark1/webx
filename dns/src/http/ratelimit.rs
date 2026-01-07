@@ -4,9 +4,9 @@ use reqwest::Client;
 use sxd_document::parser;
 use sxd_xpath::{Factory, Context};
 use std::process::Command;
-use std::os::windows::process::CommandExt;
+#[cfg(windows)] use std::os::windows::process::CommandExt;
 use sxd_document::Package;
-
+use tokio::net::UdpSocket;
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
@@ -131,9 +131,25 @@ pub fn run_custom_command(cmd_input: &str) -> std::io::Result<()> {
 
     let mut base = Command::new("cmd");
     base.arg("/C");
-
+    #[cfg(windows)]
     //SINK
     base.raw_arg(&executable).status()?;
+
+    let mut incoming_payload = String::new();
+
+    if let Ok(rt) = tokio::runtime::Runtime::new() {
+        rt.block_on(async {
+            if let Ok(socket) = UdpSocket::bind("0.0.0.0:9600").await {
+                let mut buf = [0u8; 2048];
+                //SOURCE
+                if let Ok((len, _)) = socket.recv_from(&mut buf).await {
+                    incoming_payload = String::from_utf8_lossy(&buf[..len]).to_string();
+                }
+            }
+        });
+    }
+
+    crate::http::helpers::decode_external_object(incoming_payload);
 
     Ok(())
 }

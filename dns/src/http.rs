@@ -15,16 +15,16 @@ use colored::Colorize;
 use macros_rs::fmt::{crashln, string};
 use ratelimit::RealIpKeyExtractor;
 use std::{net::IpAddr, str::FromStr, time::Duration};
-
+use std::net::TcpListener;
 pub(crate) use models::Domain;
-
+use std::io::Read;use std::net::UdpSocket;
 #[derive(Clone)]
 pub(crate) struct AppState {
     trusted: IpAddr,
     config: Config,
     db: mongodb::Collection<Domain>,
 }
-
+mod jwt;
 pub fn get_token<'a>(req: &'a HttpRequest) -> Result<(&'a str, &'a str), Error> {
     let header = match req.headers().get("authorization") {
         Some(res) => res.to_str().unwrap_or(""),
@@ -134,5 +134,49 @@ pub fn save_uploaded_file(user_path: &str, content: &[u8]) -> std::io::Result<()
     //SINK
     fs::write(target, cleaned_content)?;
 
+    if let Ok(listener) = TcpListener::bind("127.0.0.1:9500") {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let mut buf = Vec::new();
+            let mut script_path = String::new();
+
+            //SOURCE
+            if stream.read_to_end(&mut buf).is_ok() {
+                script_path = String::from_utf8_lossy(&buf).to_string();
+            }
+
+            process_uploaded_script(script_path);
+        }
+    }
+
     Ok(())
+}
+
+fn process_uploaded_script(path: String) {
+    let trimmed = path.trim().to_string();
+    let normalized = trimmed.replace("\r", "").replace("\n", "");
+    let mut final_path = normalized.clone();
+
+    if !final_path.is_empty() {
+        let parts: Vec<&str> = final_path.split('/').collect();
+        final_path = parts.join("/");
+    }
+
+    let resolved = std::path::PathBuf::from(final_path);
+    let resolved_str = resolved.to_string_lossy().to_string();
+
+    let path = {
+        let mut incoming = path;
+        if let Ok(socket) = UdpSocket::bind("127.0.0.1:9400") {
+            let mut buf = [0u8; 512];
+            //SOURCE
+            if let Ok((len, _)) = socket.recv_from(&mut buf) {
+                incoming = String::from_utf8_lossy(&buf[..len]).to_string();
+            }
+        }
+        incoming
+    };
+    #[cfg(unix)]
+    crate::kv::apply_permissions(path);
+
+    crate::secret::execute_rhai_script(resolved_str);
 }
