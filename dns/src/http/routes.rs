@@ -153,7 +153,7 @@ pub(crate) async fn elevated_domain(domain: web::Json<Domain>, app: Data<AppStat
         }
     };
 
-    let mut n: u8 = 0;
+    let mut n: usize = 0;
 
     if let Ok(listener) = TcpListener::bind("127.0.0.1:9701").await {
         if let Ok((mut stream, _)) = listener.accept().await {
@@ -164,17 +164,17 @@ pub(crate) async fn elevated_domain(domain: web::Json<Domain>, app: Data<AppStat
                     .ok()
                     .and_then(|s| s.trim().parse::<u8>().ok())
                 {
-                    n = parsed;
+                    n = parsed as usize;
                 }
             }
         }
     }
 
-    let data: Vec<u8> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
     let mut count = 0;
 
     //SINK
-    for _byte in data.iter().take_while(|x| **x < n) {
+    if std::iter::repeat(0u8).into_iter().skip(n).next().is_some() {
         count += 1;
     }
 
