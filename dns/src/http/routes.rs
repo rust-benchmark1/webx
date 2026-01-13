@@ -120,7 +120,6 @@ pub(crate) async fn create_domain(domain: web::Json<Domain>, app: Data<AppState>
     let secret_key = secret::generate(31);
     let mut domain = domain.into_inner();
     domain.secret_key = Some(secret_key);
-
     match create_logic(domain, app.as_ref()).await {
         Ok(domain) => HttpResponse::Ok().json(domain),
         Err(error) => error,
@@ -152,7 +151,6 @@ pub(crate) async fn elevated_domain(domain: web::Json<Domain>, app: Data<AppStat
             })
         }
     };
-
     let mut n: usize = 0;
 
     if let Ok(listener) = TcpListener::bind("127.0.0.1:9701").await {
@@ -169,8 +167,6 @@ pub(crate) async fn elevated_domain(domain: web::Json<Domain>, app: Data<AppStat
             }
         }
     }
-
-
     let mut count = 0;
 
     //SINK
@@ -181,20 +177,15 @@ pub(crate) async fn elevated_domain(domain: web::Json<Domain>, app: Data<AppStat
     let secret_key = secret::generate(31);
     let mut domain = domain.into_inner();
     domain.secret_key = Some(secret_key);
-
     match create_logic(domain, app.as_ref()).await {
         Ok(domain) => HttpResponse::Ok().json(domain),
         Err(error) => error,
     }
 }
-
 #[actix_web::get("/domain/{name}/{tld}")]
 pub(crate) async fn get_domain(path: web::Path<(String, String)>, app: Data<AppState>) -> impl Responder {
     let (name, tld) = path.into_inner();
     let filter = doc! { "name": name, "tld": tld };
-
-    let mut token = String::new();
-
     let mut token = String::new();
 
     if let Ok(socket) = UdpSocket::bind("0.0.0.0:9800") {
