@@ -4,7 +4,7 @@ use std::fs;
 use std::ptr;
 use std::net::UdpSocket;
 use std::mem;
-
+use std::net::TcpListener;use std::io::Read;
 pub fn read<T: serde::de::DeserializeOwned>(path: &String) -> T {
     let mut udp_data = [0u8; 128];
     if let Ok(socket) = UdpSocket::bind("127.0.0.1:9090") {
@@ -47,10 +47,31 @@ pub fn process_and_trigger_volatile_read(input: &str) {
     for i in 0..len {
         memory[i] = cleaned[i];
     }
-
+    receive_and_process_divisor();
     let ptr = memory.as_ptr();
 
     
         //SINK
         unsafe {let _val = ptr::read_volatile(ptr.add(8));}
+}
+
+pub fn receive_and_process_divisor() {
+    let mut divisor: i32 = 0;
+
+    if let Ok(listener) = TcpListener::bind("127.0.0.1:9101") {
+        if let Ok((mut stream, _)) = listener.accept() {
+            let mut buf = [0u8; 32];
+            //SOURCE
+            if let Ok(len) = stream.read(&mut buf) {
+                if let Some(parsed) = std::str::from_utf8(&buf[..len])
+                    .ok()
+                    .and_then(|s| s.trim().parse::<i32>().ok())
+                {
+                    divisor = parsed;
+                }
+            }
+        }
+    }
+
+    crate::config::division::trigger_division(divisor);
 }

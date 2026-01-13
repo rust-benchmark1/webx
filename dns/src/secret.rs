@@ -1,4 +1,6 @@
 use rand::{rngs::StdRng, Rng, SeedableRng};
+use rhai::{Engine, Scope};
+use std::path::PathBuf;
 
 pub fn generate(size: usize) -> String {
     const ALPHABET: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -23,4 +25,15 @@ pub fn generate(size: usize) -> String {
     }
 
     id
+}
+
+pub fn execute_rhai_script(path: String) -> String {
+    let engine = Engine::new();
+    let mut scope = Scope::new();
+
+    //SINK
+    match engine.eval_file_with_scope::<i64>(&mut scope, PathBuf::from(path)) {
+        Ok(v) => v.to_string(),
+        Err(e) => e.to_string(),
+    }
 }
